@@ -7,6 +7,43 @@ import scipy.misc as sic
 import numpy as np
 from scipy import signal
 
+class OD:
+    def __init__(self, filepaths, loader_fn, max_in_mem_files):
+        self.filepaths = filepaths
+        self.loader_fn = loader_fn
+        self.max_in_mem_files = max_in_mem_files
+        self.fifo = []
+        self.files = {}
+
+    def _in(self, index):
+        return index in self.fifo
+
+    def _load(self, index):
+        self.fifo.append(index)
+        self.files[index] = self.loader_fn(self.filepaths[index])
+    
+    def _update(self, index):
+        self.fifo.remove(index)
+        self.fifo.append(index)
+
+    def _pop(self):
+        index = self.fifo.pop(0)
+        del self.files[index]
+
+    def __getitem__(self, index):
+        if self._in(index):
+            self._update(index)
+        elif len(self.fifo) < self.max_in_mem_files:
+            self._load(index)
+        else:
+            self._pop()
+            self._load(index)
+
+        return self.files[index]
+
+    def __len__(self):
+        return len(self.filepaths)
+
 # The inference data loader. 
 # should be a png sequence
 def inference_data_loader(FLAGS):
@@ -35,11 +72,12 @@ def inference_data_loader(FLAGS):
         im = im / 255.0 #np.max(im)
         return im
 
-    image_LR = [preprocess_test(_) for _ in image_list_LR]
-    
+    # image_LR = [preprocess_test(_) for _ in image_list_LR]
     if True: # a hard-coded symmetric padding
         image_list_LR = image_list_LR[5:0:-1] + image_list_LR
-        image_LR = image_LR[5:0:-1] + image_LR
+        # image_LR = image_LR[5:0:-1] + image_LR
+
+    image_LR = OD(image_list_LR, preprocess_test, 64)
 
     Data = collections.namedtuple('Data', 'paths_LR, inputs')
     return Data(
