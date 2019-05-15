@@ -31,6 +31,8 @@ Flags.DEFINE_string('output_pre', 'images', 'The output pre of the images')
 Flags.DEFINE_string('output_ext', 'jpg', 'The format of the output when evaluating')
 Flags.DEFINE_string('summary_dir', None, 'The dirctory to output the summary')
 
+Flags.DEFINE_integer('starting_frame', 0, 'The first frame to process')
+
 # Models
 Flags.DEFINE_string('checkpoint', None, 'If provided, the weight will be restored from the provided checkpoint')
 Flags.DEFINE_integer('num_resblock', 16, 'How many residual blocks are there in the generator')
@@ -156,16 +158,16 @@ if FLAGS.mode == 'inference':
         
         srtime = 0
         print('Frame evaluation starts!!')
-        for i in range(max_iter):
+        for i in range(FLAGS.starting_frame, max_iter):
             input_im = np.array([inference_data.inputs[i]]).astype(np.float32)
             feed_dict={inputs_raw: input_im}
             t0 = time.time()
-            if(i != 0):
+            if(i != FLAGS.starting_frame):
                 sess.run(before_ops, feed_dict=feed_dict)
             output_frame = sess.run(outputs, feed_dict=feed_dict)
             srtime += time.time()-t0
             
-            if(i >= 5): 
+            if(i >= FLAGS.starting_frame + 5): 
                 name, _ = os.path.splitext(os.path.basename(str(inference_data.paths_LR[i])))
                 filename = "output_"+name
                 print('saving image %s' % filename)
